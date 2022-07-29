@@ -26,6 +26,7 @@ class Api extends BaseController {
     protected $request_endpoint;
     protected $global_limit = 250;
     protected $AuthorizationToken;
+    protected $accepted_endpoints;
 
     // keys to exempt when processing the request parameter keys
     protected $keys_exempted = ["ip_address", "ci_session"];
@@ -120,7 +121,7 @@ class Api extends BaseController {
         }
 
         // set the method to use
-        $this->class_method = empty($parent) ? "list" : $parent;
+        $this->class_method = empty($parent) ? "index" : $parent;
 
         // set the default parameters
         $this->req_params = $t_params;
@@ -186,7 +187,18 @@ class Api extends BaseController {
          * 
          * Return an error / success message with a specific code
          */
-        if( !isset($db_req_params[$this->request_endpoint][$this->req_method][$this->class_method]) ) {
+        if( !isset($db_req_params[$this->request_endpoint][$this->req_method]) ) {
+            
+            // set the code to return 
+            $code = empty($this->inner_url) ? 200 : 404;
+
+            // set the response code
+            $this->response_code = $code;
+
+            // return error if not valid
+            return $this->requestOutput($code, $this->outputMessage($code));
+
+        } elseif( !in_array($this->class_method, ['index']) && !isset($db_req_params[$this->request_endpoint][$this->req_method][$this->class_method]) ) {
             
             // set the code to return 
             $code = empty($this->inner_url) ? 200 : 404;
@@ -199,7 +211,10 @@ class Api extends BaseController {
         } else {
             
             // set the acceptable parameters
-            $accepted =  $db_req_params[$this->request_endpoint][$this->req_method][$this->class_method];
+            $accepted =  $db_req_params[$this->request_endpoint][$this->req_method][$this->class_method] ?? [];
+
+            // set the endpoint sub requests
+            $this->accepted_endpoints = $db_req_params[$this->request_endpoint][$this->req_method];
 
             // confirm that the parameters parsed is not more than the accpetable ones
             if( empty(array_keys($accepted)) ) {
@@ -430,7 +445,7 @@ class Api extends BaseController {
             if(class_exists($classname)) {
 
                 // create a new class for handling the resource
-                $classObject = new $classname();
+                $classObject = new $classname($this->accepted_endpoints);
                             
                 // confirm that there is a method to process the resource endpoint
                 if(method_exists($classObject, $this->class_method)) {

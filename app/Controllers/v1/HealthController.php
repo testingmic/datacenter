@@ -8,16 +8,22 @@ class HealthController {
 
     private $health_model;
     private $db_filter;
+    private $endpoint;
 
-    public function __construct()
+    public function __construct($endpoint)
     {
         $this->health_model = new HealthModel;
         $this->db_filter = new Filters;
+        $this->endpoint = $endpoint;
         $this->route = 'health';
     }
 
-    public function list() {
+    public function index() {
         
+        return [
+            'accepted_requests' => $this->endpoint
+        ];
+
     }
 
     public function facilities(array $params = [], $primary_key = null) {
@@ -42,9 +48,9 @@ class HealthController {
 
             // if the primary key is set
             if(!empty($primary_key)) {
-                $builder->where('id', $primary_key);
+                $builder->where('a.id', $primary_key);
             }
-
+            
             // get the data
             $result = $builder->get();
 
@@ -81,7 +87,7 @@ class HealthController {
 
             // if the primary key is set
             if(!empty($primary_key)) {
-                $builder->where('id', $primary_key);
+                $builder->where('a.id', $primary_key);
             }
 
             // get the data
