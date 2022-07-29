@@ -1,0 +1,19 @@
+{
+	"health": {
+		"GET": {
+			"list": {},
+			"facilities": {
+				"region_id": "matched=0-9",
+				"counstituency_id": "matched=0-9",
+				"district_id": "matched=0-9",
+				"country_code": "matched=A-Z"
+			},
+			"professionals": {
+				
+			},
+			"diseases": {
+
+			}
+		}
+	}
+}
