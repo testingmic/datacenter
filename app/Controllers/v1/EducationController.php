@@ -6,18 +6,29 @@ use App\Models\v1\EducationModel;
 
 class EducationController {
 
-    private $education_model;
+    private $db_model;
     private $db_filter;
 
-    public function __construct()
+    public function __construct($endpoint = [])
     {
-        $this->education_model = new EducationModel;
+        $this->health_model = new EducationModel;
         $this->db_filter = new Filters;
+        $this->endpoint = $endpoint;
+        $this->route = 'education';
     }
 
-    public function list() {
-        
-        
+    public function index() {
+        $endpoints = [];
+
+        if( is_array($this->endpoint) ) {
+            foreach($this->endpoint as $key => $value) {
+                $endpoints["{$this->route}/{$key}"] = $value;
+            }
+        }
+
+        return [
+            'enpoints' => $endpoints
+        ];        
     }
 
     public function institutions(array $params = [], $primary_key = null) {

@@ -2,10 +2,12 @@
 	"health": {
 		"GET": {
 			"facilities": {
+				"name": "matched=a-zA-Z0-9",
 				"region_id": "matched=0-9",
-				"counstituency_id": "matched=0-9",
+				"constituency_id": "matched=0-9",
 				"district_id": "matched=0-9",
-				"country_code": "matched=A-Z"
+				"country_code": "matched=A-Z",
+				"ghanapostgps": "matched=0-9A-Z-"
 			},
 			"professionals": {
 

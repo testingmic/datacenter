@@ -24,7 +24,7 @@ class App extends BaseConfig
      *
      * @var string
      */
-    public $baseURL = 'http://localhost/datacenterbank/';
+    public $baseURL = 'http://localhost/databank/';
 
     /**
      * --------------------------------------------------------------------------

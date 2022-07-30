@@ -29,7 +29,7 @@ class Api extends BaseController {
     protected $accepted_endpoints;
 
     // keys to exempt when processing the request parameter keys
-    protected $keys_exempted = ["ip_address", "ci_session"];
+    protected $keys_exempted = ["ip_address", "ci_session", "access_token"];
 
     // keys to bypass when checking for the csrf_token
     protected $bypass_csrf_token_list = ['_logout', 'ajax_cronjob'];
@@ -242,7 +242,7 @@ class Api extends BaseController {
                 if($errorFound) {
                     // return invalid parameters parsed to the endpoint
                     return $this->requestOutput(405, [
-                        'accepted' => ["parameters" => array_keys($accepted)],
+                        'accepted' => ["parameters" => $accepted],
                         'invalids' => $errorFound
                     ]);
                 } else {
@@ -395,14 +395,13 @@ class Api extends BaseController {
         // set the parameters
         $authorized = false;
         $params = $this->req_params;
-
-
+        
         // if the authorization token is not empty
-        if( !empty($this->AuthorizationToken) ) {
+        if( !empty($this->AuthorizationToken) || !empty($params['access_token']) ) {
 
             // set the authorization token
-            $token = $this->AuthorizationToken->getValue();
-
+            $token = !empty($params['access_token']) ? "Bearer {$params['access_token']}" : $this->AuthorizationToken->getValue();
+            
             // set the controller name
             $classname = "\\App\\Controllers\\".$this->api_version."\\AuthController";
 

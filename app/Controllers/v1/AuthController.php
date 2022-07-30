@@ -6,6 +6,7 @@ use App\Models\v1\AuthModel;
 class AuthController {
 
     private $auth_model;
+    private $token_expiry = 12;
 
     public function __construct()
     {
@@ -71,7 +72,7 @@ class AuthController {
 
         // create the temporary accesstoken
         $token = random_string("alnum", 64);
-        $expiry = date("Y-m-d h:iA", strtotime("+12 hour"));
+        $expiry = date("Y-m-d H:i:s", strtotime("+{$this->token_expiry} hour"));
 
         // most recent query
         $recent = $this->previous_token($userId);
@@ -104,7 +105,6 @@ class AuthController {
                             'expired_at' => $expiry
                         ]);
             }
-                
 
         } catch(\Exception $e) {
             return 'Error generating access token';
@@ -135,10 +135,10 @@ class AuthController {
         $data = !empty($stmt) ? $stmt->getResultArray() : [];
 
         // get the time of creation
-		$lastToken = !empty($data) ? $data[0]['created_at'] : 0;
+		$lastToken = !empty($data) ? $data[0]['expired_at'] : 0;
         
         // if the last update was parsed
-		return !empty($lastToken) && (strtotime($lastToken) + (60 * 60 * 6)) >= time() ? $data[0]['token'] : null;
+		return (!empty($lastToken) && strtotime($lastToken) > time()) ? $data[0]['token'] : null;
 	
     }
 
@@ -178,7 +178,7 @@ class AuthController {
      * @return Array
      */
     public function validate_token($authToken, $api_version) {
-
+        
         // if the token does not contain the keyword Bearer then end the query
         if( !contains($authToken, ['Bearer'])) {
             return 'Invalid token parsed.';
@@ -207,7 +207,7 @@ class AuthController {
 		$lastToken = !empty($data) ? $data[0]['created_at'] : 0;
         
         // confirm if the access token has not yet expired
-		if(!empty($lastToken) && (strtotime($lastToken) + (60 * 60 * 6)) >= time()) {
+		if(!empty($lastToken) && (strtotime($lastToken) + (60 * 60 * $this->token_expiry)) >= time()) {
             
             try {
                 

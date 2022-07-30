@@ -196,4 +196,20 @@ function validate_value($rules, $param_value, $variable_name) {
     }
 }
 
+/**
+ * Return a field that matches the data in the array list
+ * 
+ * @param Array     $array_list     This is the array list
+ * @param String    $word           This is the word to match against the array column
+ * @param String    $match          This is the table column to match against the word
+ * @param Mixed     $field          This is the column field to return 
+ */
+function array_data_column($array_list, $word, $match = 'name', $field = 'id') {
+    foreach($array_list as $row) {
+        if(stristr($row[$match], $word) !== false) {
+            return $row[$field];
+        }
+    }
+    return "";
+}
 ?>
