@@ -13,7 +13,7 @@ class HealthCron {
     public function init() {
 
         // get the list of all health facilities
-        // self::facilities();
+        self::facilities();
 
         // update the db with the information loaded
         self::data_dot_gov_facility();

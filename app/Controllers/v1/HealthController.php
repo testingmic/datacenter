@@ -8,6 +8,8 @@ class HealthController {
 
     public $db_model;
     private $db_filter;
+    private $db_limit = 100;
+    private $db_offset = 0;
     
     public $facility_table = 'health_facilities';
 
@@ -38,10 +40,18 @@ class HealthController {
         
         try {
 
+            // apply the limit
+            $limit = isset($params['limit']) ? (int) $params['limit'] : $this->db_limit;
+            $limit = !empty($primary_key) ? 1 : $limit;
+            $limit = $limit > $this->db_limit ? $this->db_limit : $limit;
+
+            // apply the offset
+            $offset = isset($params['offset']) ? (int) $params['offset'] : $this->db_offset;
+
+            // set the builder
             $builder = $this->db_model->db
                         ->table("{$this->facility_table} a")
                         ->select('a.*, r.name AS region_name, d.name AS district_name, c.name AS constituency_name')
-                        ->orderBy('a.id', 'DESC')
                         ->join('regions r', 'r.id = a.region_id', 'left')
                         ->join('districts d', 'd.id = a.district_id', 'left')
                         ->join('constituency c', 'c.id = a.constituency_id', 'left');
@@ -66,6 +76,9 @@ class HealthController {
             if(!empty($primary_key)) {
                 $builder->where('a.id', $primary_key);
             }
+
+            // apply limit
+            $builder->limit($limit, $offset);
 
             // get the data
             $result = $builder->get();

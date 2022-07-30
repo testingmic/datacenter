@@ -29,7 +29,7 @@ class Api extends BaseController {
     protected $accepted_endpoints;
 
     // keys to exempt when processing the request parameter keys
-    protected $keys_exempted = ["ip_address", "ci_session", "access_token"];
+    protected $keys_exempted = ["ip_address", "ci_session", "access_token", "limit", "offset"];
 
     // keys to bypass when checking for the csrf_token
     protected $bypass_csrf_token_list = ['_logout', 'ajax_cronjob'];
