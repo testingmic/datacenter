@@ -3,9 +3,6 @@ namespace App\Controllers\cronjobs;
 
 class HealthCron {
 
-    private $regions_array = [];
-    private $country_code;
-
     /**
      * Initialize the cron job activity
      * 
@@ -128,7 +125,7 @@ class HealthCron {
      * 
      * @return String
      */
-    private function data_dot_gov_facility() {
+    private static function data_dot_gov_facility() {
 
         // set the file directory path
         $facilityDir = WRITEPATH . "data/health/facilities/";
@@ -137,7 +134,7 @@ class HealthCron {
         $api_version = config('Api')->api_version;
 
         // set the country code
-        $this->country_code = 'GH';
+        $country_code = 'GH';
         $regions_count = 16;
 
         // set the file name
@@ -164,13 +161,57 @@ class HealthCron {
                     // get regions list
                     $builder = $healthObj->db_model->db
                                         ->table('regions')
-                                        ->where('country_code', $this->country_code)
+                                        ->where('country_code', $country_code)
                                         ->limit($regions_count);
 
                     $result = $builder->get();
 
                     // convert the list to an array
-                    $this->regions_array = !empty($result) ? $result->getResultArray() : [];
+                    $regions_array = !empty($result) ? $result->getResultArray() : [];
+
+                    
+                    // LOAD THE DISTRICTS FILE CONTENT AND INSERT THE DATA
+                    $file = WRITEPATH . "data/districts.csv";
+
+                    if (($handle = fopen($file, "r")) !== FALSE) {
+                        $row = 1;
+
+                        $insert_query = "INSERT INTO districts 
+                            (`id`, `country_code`, `region_id`, `district_code`, 
+                                `district_category`, `district_capital`, `name`, `chief_executive`) 
+                            VALUES 
+                        ";
+                        while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
+                            if($row !== 1) {
+                                
+                                // get the region id
+                                $region_id = array_data_column($regions_array, $data[1]);
+                                    
+                                // generate own district code
+                                $district = explode(" ", $data[2]);
+                                $code = "";
+
+                                // loop through the exploded name
+                                foreach ($district as $w) {
+                                    $code .= mb_substr($w, 0, 1);
+                                }
+
+                                if(strlen($code) == 1) {
+                                    $code = $code . substr($data[1], 1, 2);
+                                }
+
+                                $district_code = strtoupper($code) . random_int(15, 50);
+                                $insert_query .= "(NULL, '{$country_code}', '{$region_id}', '{$district_code}', 
+                                    '{$data['3']}', '{$data['4']}', '{$data[2]}', '{$data[0]}'),\n";
+                            }
+                            $row++;
+                        }
+                        fclose($handle);
+                    }
+
+                    $insert_query = trim(trim($insert_query), ',').';';
+                    $healthObj->db_model->db->query($insert_query);
+                    return;
 
                     // init the cron activity
                     print "\n" . date("l, F jS, Y h:i:sa") . " - Loading all facilities for the day.\n\n";
@@ -222,58 +263,6 @@ class HealthCron {
             
             }
 
-        }
-
-    }
-
-    /**
-     * Regions and their respective Districts
-     * 
-     * @return String
-     */
-    private function region_districts() {
-
-        // district files
-        $file = WRITEPATH . "data/districts.txt";
-        $handle = fopen($file, "r");
-
-        if ($handle) {
-
-            $insert_query = "INSERT INTO districts (`id`, `country_code`, `region_id`, `district_code`, `name`) VALUES ";
-
-            while (($line = fgets($handle)) !== false) {
-                $text = trim($line);
-                if(!empty($text)) {
-                    if( contains($text, ['Region'])) {
-                        $region = trim(str_ireplace('Region:', '', $text));
-                        $text = null;
-                    }
-                    if(!empty($text)) {
-                        // get the region id
-                        $region_id = array_data_column($this->regions_array, $region);
-                        
-                        // generate own district code
-                        $district = explode(" ", $text);
-                        $code = "";
-
-                        // loop through the exploded name
-                        foreach ($district as $w) {
-                            $code .= mb_substr($w, 0, 1);
-                        }
-
-                        if(strlen($code) == 1) {
-                            $code = $code . substr($text, 1, 2);
-                        }
-
-                        $district_code = strtoupper($code) . random_int(15, 50);
-                        $insert_query .= "(NULL, '{$this->country_code}', '{$region_id}', '{$district_code}', '{$text}'),\n";
-
-                    }
-                }
-            }                        
-            fclose($handle);
-
-            $insert_query = trim(trim($insert_query), ',').';';
         }
 
     }
