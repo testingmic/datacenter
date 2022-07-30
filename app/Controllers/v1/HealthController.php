@@ -28,6 +28,11 @@ class HealthController {
         $this->route = 'health';
     }
 
+    /**
+     * Return all available requests for the endpoint with its accepted parameters
+     * 
+     * @return Array
+     */
     public function index() {
 
         $endpoints = [];
@@ -43,6 +48,13 @@ class HealthController {
         ];
     }
 
+    /**
+     * Set the Limit and Offset Parameters
+     * If the user submitted a limit then it will be applied. However, if the set limit is greater than the 
+     * default value then it will be reset to the default
+     * 
+     * @return Mixed
+     */
     private function limit_offset($params) {
 
         // apply the limit
@@ -56,6 +68,17 @@ class HealthController {
         $this->qr_offset = isset($params['offset']) ? (int) $params['offset'] : $this->db_offset;
     }
 
+    /**
+     * Get the list of all facilities
+     * 
+     * The default to to load all records. However, when the primary_key is set then a single record is returned
+     * The limit and offset filters are applied. The default limit is 100
+     * 
+     * @param Array     $params
+     * @param Int       $primary_key
+     * 
+     * @return Array
+     */
     public function facilities(array $params = [], $primary_key = null) {
         
         try {
@@ -82,9 +105,28 @@ class HealthController {
             // filter where like
             $whereLikeArray = $this->db_filter->filterWhereLike($params, $this->route);
 
-            // loop through the filter like array list
-            foreach($whereLikeArray as $key => $whereLike) {
-                $builder->like($key, $whereLike, 'both');
+            // counter
+            $count = 0;
+
+            // loop through the like columns and append it to the query
+            foreach($whereLikeArray as $key => $value) {
+                if( !is_array($value) ) {
+                    if($count == 0) {
+                        $builder->like($key, $value, 'both');
+                    } else {
+                        $builder->orLike($key, $value, 'both');
+                    }
+                    $count++;
+                } else {
+                    foreach($value as $i => $v) {
+                        if($i == 0) {
+                            $builder->like($key, $v);
+                        } else {
+                            $builder->orLike($key, $v);
+                        }                        
+                        $count++;
+                    }
+                }
             }
 
             // if the primary key is set
@@ -110,6 +152,13 @@ class HealthController {
 
     }
 
+    /**
+     * Add a new facility record
+     * 
+     * @param Array     $params
+     * 
+     * @return Bool
+     */
     public function add_facility(array $params = []) {
 
         try {
@@ -122,6 +171,14 @@ class HealthController {
 
     }
 
+    /**
+     * Update the Facility record using the id as unique key
+     * 
+     * @param Array     $params
+     * @param Int       $facility_id
+     * 
+     * @return Bool
+     */
     public function update_facility(array $params = [], $facility_id = null) {
 
         try {
@@ -148,6 +205,17 @@ class HealthController {
         
     }
 
+    /**
+     * Get the list of all professionals
+     * 
+     * The default to to load all records. However, when the primary_key is set then a single record is returned
+     * The limit and offset filters are applied. The default limit is 100
+     * 
+     * @param Array     $params
+     * @param Int       $primary_key
+     * 
+     * @return Array
+     */
     public function professionals(array $params = [], $primary_key = null) {
 
         try {
@@ -170,6 +238,32 @@ class HealthController {
                 $builder->whereIn($key, $whereIn);
             }
 
+            // filter where like
+            $whereLikeArray = $this->db_filter->filterWhereLike($params, $this->route);
+
+            // counter
+            $count = 0;
+            // loop through the like columns and append it to the query
+            foreach($whereLikeArray as $key => $value) {
+                if( !is_array($value) ) {
+                    if($count == 0) {
+                        $builder->like($key, $value, 'both');
+                    } else {
+                        $builder->orLike($key, $value, 'both');
+                    }
+                    $count++;
+                } else {
+                    foreach($value as $i => $v) {
+                        if($i == 0) {
+                            $builder->like($key, $v);
+                        } else {
+                            $builder->orLike($key, $v);
+                        }                        
+                        $count++;
+                    }
+                }
+            }
+
             // if the primary key is set
             if(!empty($primary_key)) {
                 $builder->where('a.id', $primary_key);
@@ -193,6 +287,70 @@ class HealthController {
 
     }
 
+    /**
+     * Add a new professional record
+     * 
+     * @param Array     $params
+     * 
+     * @return Bool
+     */
+    public function add_professionals(array $params = []) {
+
+        try {
+
+            return $this->db_model->db->table($this->profession_table)->insert($params);
+
+        } catch(\Exception $e) {
+            return [];
+        }
+
+    }
+
+    /**
+     * Update the professional record using the id as unique key
+     * 
+     * @param Array     $params
+     * @param Int       $professional_id
+     * 
+     * @return Bool
+     */
+    public function update_professionals(array $params = [], $professional_id = null) {
+
+        try {
+
+            if(empty($professional_id) && !isset($params['id'])) {
+                return [];
+            }
+
+            if(empty($professional_id)) {
+                $professional_id = $params['id'];
+                unset($params['id']);
+            }
+
+            // update the row
+            return $this->db_model->db->table($this->profession_table)
+                    ->set($params)
+                    ->where(['id' => $professional_id])
+                    ->limit(1)
+                    ->update();
+
+        } catch(\Exception $e) {
+            return [];            
+        }
+        
+    }
+
+    /**
+     * Get the list of all diseases
+     * 
+     * The default to to load all records. However, when the primary_key is set then a single record is returned
+     * The limit and offset filters are applied. The default limit is 100
+     * 
+     * @param Array     $params
+     * @param Int       $primary_key
+     * 
+     * @return Array
+     */
     public function diseases(array $params = [], $primary_key = null) {
 
         try {
@@ -203,8 +361,7 @@ class HealthController {
             // query builder
             $builder = $this->db_model->db
                         ->table("{$this->disease_table} a")
-                        ->select('a.*')
-                        ->orderBy('a.id', 'DESC');
+                        ->select('a.*');
 
             // filter where in
             $whereInArray = $this->db_filter->filterWhereIn($params, $this->route);
@@ -212,6 +369,32 @@ class HealthController {
             // loop through the filter in in array clause
             foreach($whereInArray as $key => $whereIn) {
                 $builder->whereIn($key, $whereIn);
+            }
+
+            // filter where like
+            $whereLikeArray = $this->db_filter->filterWhereLike($params, $this->route);
+
+            // counter
+            $count = 0;
+            // loop through the like columns and append it to the query
+            foreach($whereLikeArray as $key => $value) {
+                if( !is_array($value) ) {
+                    if($count == 0) {
+                        $builder->like($key, $value, 'both');
+                    } else {
+                        $builder->orLike($key, $value, 'both');
+                    }
+                    $count++;
+                } else {
+                    foreach($value as $i => $v) {
+                        if($i == 0) {
+                            $builder->like($key, $v);
+                        } else {
+                            $builder->orLike($key, $v);
+                        }                        
+                        $count++;
+                    }
+                }
             }
 
             // if the primary key is set
@@ -225,6 +408,7 @@ class HealthController {
             // get the data
             $result = $builder->get();
 
+            // get the array version of the result
             $data = !empty($result) ? $result->getResultArray() : [];
 
             return $data;
@@ -236,5 +420,58 @@ class HealthController {
         }
 
     }
+
+    /**
+     * Add a new disease record
+     * 
+     * @param Array     $params
+     * 
+     * @return Bool
+     */
+    public function add_diseases(array $params = []) {
+
+        try {
+
+            return $this->db_model->db->table($this->disease_table)->insert($params);
+
+        } catch(\Exception $e) {
+            return [];
+        }
+
+    }
+
+    /**
+     * Update the Disease record using the id as unique key
+     * 
+     * @param Array     $params
+     * @param Int       $disease_id
+     * 
+     * @return Bool
+     */
+    public function update_diseases(array $params = [], $disease_id = null) {
+
+        try {
+
+            if(empty($disease_id) && !isset($params['id'])) {
+                return [];
+            }
+
+            if(empty($disease_id)) {
+                $disease_id = $params['id'];
+                unset($params['id']);
+            }
+
+            // update the row
+            return $this->db_model->db->table($this->disease_table)
+                    ->set($params)
+                    ->where(['id' => $disease_id])
+                    ->limit(1)
+                    ->update();
+
+        } catch(\Exception $e) {
+            return [];            
+        }
+        
+    }    
 
 }

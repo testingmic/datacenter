@@ -6,14 +6,19 @@
 				"region_id": "matched=0-9",
 				"constituency_id": "matched=0-9",
 				"district_id": "matched=0-9",
+				"services": "matched=a-zA-Z0-9",
 				"country_code": "matched=A-Z",
 				"ghanapostgps": "matched=0-9A-Z-"
 			},
 			"professionals": {
-
+				"name": "matched=a-zA-Z0-9",
+				"specialty": "matched=a-zA-Z0-9",
+				"facility_id": "matched=0-9"
 			},
 			"diseases": {
-
+				"name": "matched=a-zA-Z0-9 ",
+				"generic_name": "matched=a-zA-Z0-9",
+				"symptom": "matched=a-zA-Z0-9 "
 			}
 		}
 	}

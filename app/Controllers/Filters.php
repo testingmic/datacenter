@@ -7,25 +7,25 @@ class Filters {
         
         $data = [];
 
-        # CLIENT BASED FILTER
+        // CLIENT BASED FILTER
         if( !empty($params['client_id']) ) {
             $data['client_id'] = string_to_int_array($params['client_id']);
         }
 
-        # COMMON FILTERS
+        // COMMON FILTERS
         foreach( ['status'] as $column ) {
-            # append to the array
+            // append to the array
             if( !empty($params[$column]) ) {
                 $data["a.{$column}"] = string_to_array($params[$column]);
             }
         }
 
-        # HEALTH ROUTING FILTER
+        // HEALTH ROUTING FILTER
         if(in_array($route, ['health'])) {
 
-            # multiple filters
+            // multiple filters
             foreach( ['constituency_id', 'region_id', 'district_id', 'facility_id'] as $column ) {
-                # append to the array
+                // append to the array
                 if( !empty($params[$column]) ) {
                     $data["a.{$column}"] = string_to_array($params[$column]);
                 }
@@ -33,12 +33,12 @@ class Filters {
 
         }
 
-        # EDUCATION ROUTING FILTER
+        // EDUCATION ROUTING FILTER
         if(in_array($route, ['education'])) {
 
-            # multiple filters
+            // multiple filters
             foreach( ['institution_id'] as $column ) {
-                # append to the array
+                // append to the array
                 if( !empty($params[$column]) ) {
                     $data["a.{$column}"] = string_to_array($params[$column]);
                 }
@@ -53,10 +53,38 @@ class Filters {
         
         $data = [];
 
-        # WHERE LIKE FILTERS
+        // WHERE LIKE FILTERS
         foreach(['name', 'ghanapostgps', 'generic_name'] as $name) {
+            
             if(!empty($params[$name])) {
-                $data["a.{$name}"] = $params[$name];
+                // value into an array if comma separated
+                $string = string_to_array($params[$name]);
+
+                // loop through each value
+                foreach($string as $item) {
+                    $data["a.{$name}"][] = $item;
+                }
+            }
+        }
+
+        // if the route is health
+        if(in_array($route, ['health'])) {
+            
+            // search from the description content if the param matches these
+            foreach(['symptom', 'causes', 'treatment'] as $item) {
+                
+                // if the parameter is not empty
+                if(!empty($params[$item])) {
+
+                    // value into an array if comma separated
+                    $string = string_to_array($params[$item]);
+
+                    // loop through each value
+                    foreach($string as $item) {
+                        $data["a.description"][] = $item;
+                    }
+                    
+                }
             }
         }
 

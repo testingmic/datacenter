@@ -54,6 +54,14 @@ class UsersController {
                             ->where(['users.id' => $unique_id])
                             ->first();
 
+            if(!empty($data)) {
+                foreach(['password'] as $column) {
+                    if(isset($data[$column])) {
+                        unset($data[$column]);
+                    }
+                }
+            }
+
             return $data;
 
         } catch(\Exception $e) {

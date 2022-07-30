@@ -13,10 +13,13 @@ class HealthCron {
     public function init() {
 
         // get the list of all health facilities
-        self::facilities();
+        // self::facilities();
 
         // update the db with the information loaded
-        self::data_dot_gov_facility();
+        // self::data_dot_gov_facility();
+
+        // update the diseases data
+        self::diseases();
 
     }
     
@@ -221,6 +224,187 @@ class HealthCron {
 
         }
 
+    }
+
+    /**
+     * Loop through the HTML Page and get the content
+     * 
+     * Clean the HMTL content and get the text only. Preformat the text before creating a file for it
+     * 
+     * @return Mixed
+     */
+    public static function diseases() {
+
+        // get directory content
+        $dir = WRITEPATH . "data/health/diseases_html/";
+        $txt = WRITEPATH . "data/health/diseases_txt/";
+
+        if (!is_dir($txt)) {
+            mkdir($txt, 0644, true);
+        }
+
+        if (!is_dir($dir)) {
+            mkdir($dir, 0644, true);
+        }
+
+        $count = 0;
+        
+        // loop through the html pages list
+        foreach (get_dir_file_info($dir, false) as $directory) {
+
+            // proceed
+            $htmlString = (string) file_get_contents($directory['server_path']);
+
+            //add this line to suppress any warnings
+            libxml_use_internal_errors(true);
+
+            // if the string is not empty
+            if (!empty($htmlString)) {
+
+                $doc = new \DOMDocument();
+                $doc->loadHTML($htmlString, LIBXML_NOEMPTYTAG);
+                $xpath = new \DOMXPath($doc);
+
+                $content = $xpath->evaluate('//div[@class="js-guide cf guide"]');
+                $title = $xpath->evaluate('//h1');
+
+                $sections = $xpath->evaluate('//div[@class="js-guide cf guide"]//*[contains(@class, "tab js-guide__section guide__section")]');
+
+                $disease = null;
+                $filename = null;
+                foreach ($sections as $skey => $section) {
+                    if (!empty($title[$skey])) {
+                        $disease .= "TITLE---" . trim($title[$skey]->textContent) . PHP_EOL;
+                        $filename = url_title(trim($title[$skey]->textContent), '-', true);
+                    }
+                    $disease .= "<{$section->tagName}>" . trim($section->textContent) . "</{$section->tagName}>";
+                }
+
+                if (!empty($disease)) {
+                    print "Writing disease file {$filename}\n";
+                    $fopen = fopen("{$txt}{$filename}.txt", 'w');
+                    fwrite($fopen, $disease);
+                    fclose($fopen);
+                }
+
+                $count++;
+            }
+        }
+
+        // process the files log
+        self::log_diseases($txt);
+
+    }
+
+    /**
+     * Load the Txt File Downloaded and cleaned
+     * 
+     * Loop through all the txt files generated in the first instance and format it for db insertion
+     * 
+     * @return Bool
+     */
+    private static function log_diseases($txt) {
+
+        // set the disease array
+        $disease_array = [];
+        $row = 0;
+
+        // loop through the text files and get the information
+        foreach (get_dir_file_info($txt, false) as $key => $file) {
+
+            // open the file
+            $handle = fopen($file['server_path'], "r");
+            
+            // if the file is found
+            if ($handle) {
+
+                while (($line = fgets($handle)) !== false) {
+                    $line = trim($line);
+
+                    // if the line is not empty
+                    if (!empty($line)) {
+
+                        // preset the description key
+                        if(!isset($disease_array[$row]['description'])) {
+                            $disease_array[$row]['description'] = null;
+                        }
+
+                        if (contains($line, ['TITLE'])) {
+                            $disease_array[$row]['name'] = str_ireplace(['TITLE---'], [''], $line);
+                            $disease_array[$row]['name_slug'] = url_title($disease_array[$row]['name']);
+                        } elseif (contains($line, ['<div>'])) {
+                            $disease_array[$row]['description'] .= htmlentities((str_ireplace(['<div>'], ['<div><h3>'], $line) . "</h3>"));
+                        } else {
+                            $word_count = str_word_count($line);
+
+                            if ($word_count < 4) {
+                                $disease_array[$row]['description'] .= htmlentities("<h4>" . ucwords($line) . "</h4>");
+                            } else {
+                                $disease_array[$row]['description'] .= htmlentities("<p>" . $line . "</p>");
+                            }
+                        }
+                        $disease_array[$row]['status'] = 'active';
+                    }
+                }
+                fclose($handle);
+                $row++;
+            }
+
+        }
+
+        // if the diseases list is not empty
+        if(!empty($disease_array)) {
+
+            // get the current api version
+            $api_version = config('Api')->api_version;
+
+            // load the class
+            $classname = "\\App\\Controllers\\".$api_version."\\HealthController";
+
+            // confirm if the class actually exists
+            if(class_exists($classname)) {
+                
+                // create a new class for handling the resource
+                $healthObj = new $classname();
+
+                // init the cron activity
+                print "\n" . date("l, F jS, Y h:i:sa") . " - Loading all diseases in the text file.\n\n";
+
+                // loop through the content
+                foreach($disease_array as $disease) {
+
+                    // confirm if the item exists
+                    $stmt = $healthObj->db_model->db
+                                    ->table($healthObj->disease_table)
+                                    ->select('id')
+                                    ->where('name_slug', $disease['name_slug'])
+                                    ->whereNotIn('status', 'unverified')
+                                    ->limit(1);
+
+                    // set the value
+                    $result = $stmt->get()->getResultArray();
+
+                    // modify the text a bit
+                    $disease['description'] = html_entity_decode($disease['description']);
+                    $disease['name'] = ucwords($disease['name']);
+                    $disease['name_slug'] = strtolower($disease['name_slug']);
+
+                    // insert if empty
+                    if( empty($result) ) {
+                        $healthObj->add_diseases($disease);
+                    } else {
+                        $disease['updated_at'] = date('Y-m-d H:i:s');
+                        $healthObj->update_diseases($disease, $result[0]['id']);
+                    }
+
+                }
+
+                // end activity
+                print date("l, F jS, Y h:i:sa") . " - all diseases record successfully updated.\n\n";
+
+            }
+        }
+        
     }
 
 }

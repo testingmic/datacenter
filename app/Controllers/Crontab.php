@@ -4,6 +4,7 @@ namespace App\Controllers;
 
 use App\Controllers\cronjobs\FilesCron;
 use App\Controllers\cronjobs\HealthCron;
+use App\Controllers\cronjobs\Webscrapper;
 
 class Crontab extends Controller {
 
@@ -20,8 +21,8 @@ class Crontab extends Controller {
         }
 
         # delete all temporary files
-        // $filesObj = new FilesCron;
-        // $filesObj->delete_temp();
+        $filesObj = new FilesCron;
+        $filesObj->delete_temp();
 
         # pull health data
         $healthObj = new HealthCron;
