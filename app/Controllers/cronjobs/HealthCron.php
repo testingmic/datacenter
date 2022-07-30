@@ -169,50 +169,6 @@ class HealthCron {
                     // convert the list to an array
                     $regions_array = !empty($result) ? $result->getResultArray() : [];
 
-                    
-                    // LOAD THE DISTRICTS FILE CONTENT AND INSERT THE DATA
-                    $file = WRITEPATH . "data/districts.csv";
-
-                    if (($handle = fopen($file, "r")) !== FALSE) {
-                        $row = 1;
-
-                        $insert_query = "INSERT INTO districts 
-                            (`id`, `country_code`, `region_id`, `district_code`, 
-                                `district_category`, `district_capital`, `name`, `chief_executive`) 
-                            VALUES 
-                        ";
-                        while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
-                            if($row !== 1) {
-                                
-                                // get the region id
-                                $region_id = array_data_column($regions_array, $data[1]);
-                                    
-                                // generate own district code
-                                $district = explode(" ", $data[2]);
-                                $code = "";
-
-                                // loop through the exploded name
-                                foreach ($district as $w) {
-                                    $code .= mb_substr($w, 0, 1);
-                                }
-
-                                if(strlen($code) == 1) {
-                                    $code = $code . substr($data[1], 1, 2);
-                                }
-
-                                $district_code = strtoupper($code) . random_int(15, 50);
-                                $insert_query .= "(NULL, '{$country_code}', '{$region_id}', '{$district_code}', 
-                                    '{$data['3']}', '{$data['4']}', '{$data[2]}', '{$data[0]}'),\n";
-                            }
-                            $row++;
-                        }
-                        fclose($handle);
-                    }
-
-                    $insert_query = trim(trim($insert_query), ',').';';
-                    $healthObj->db_model->db->query($insert_query);
-                    return;
-
                     // init the cron activity
                     print "\n" . date("l, F jS, Y h:i:sa") . " - Loading all facilities for the day.\n\n";
 
