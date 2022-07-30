@@ -10,8 +10,15 @@ class HealthController {
     private $db_filter;
     private $db_limit = 100;
     private $db_offset = 0;
+
+    // reset the query limit and offsets
+    private $qr_limit;
+    private $qr_offset;
     
+    // tables list
     public $facility_table = 'health_facilities';
+    public $profession_table = 'health_professionals';
+    public $disease_table = 'health_diseases';
 
     public function __construct($endpoint = [])
     {
@@ -36,17 +43,25 @@ class HealthController {
         ];
     }
 
+    private function limit_offset($params) {
+
+        // apply the limit
+        $limit = isset($params['limit']) ? (int) $params['limit'] : $this->db_limit;
+        $limit = !empty($primary_key) ? 1 : $limit;
+
+        // set the offset
+        $this->qr_limit = $limit > $this->db_limit ? $this->db_limit : $limit;
+
+        // apply the offset
+        $this->qr_offset = isset($params['offset']) ? (int) $params['offset'] : $this->db_offset;
+    }
+
     public function facilities(array $params = [], $primary_key = null) {
         
         try {
 
             // apply the limit
-            $limit = isset($params['limit']) ? (int) $params['limit'] : $this->db_limit;
-            $limit = !empty($primary_key) ? 1 : $limit;
-            $limit = $limit > $this->db_limit ? $this->db_limit : $limit;
-
-            // apply the offset
-            $offset = isset($params['offset']) ? (int) $params['offset'] : $this->db_offset;
+            $this->limit_offset($params);
 
             // set the builder
             $builder = $this->db_model->db
@@ -77,8 +92,8 @@ class HealthController {
                 $builder->where('a.id', $primary_key);
             }
 
-            // apply limit
-            $builder->limit($limit, $offset);
+            // apply limit and offsets
+            $builder->limit($this->qr_limit, $this->qr_offset);
 
             // get the data
             $result = $builder->get();
@@ -137,10 +152,13 @@ class HealthController {
 
         try {
 
+            // apply the limit
+            $this->limit_offset($params);
+
+            // query builder
             $builder = $this->db_model->db
-                        ->table('health_professionals a')
+                        ->table("{$this->profession_table} a")
                         ->select('a.*, f.name AS facility_name, f.address AS facility_address, f.contact AS facility_contact, r.name AS facility_region')
-                        ->orderBy('a.id', 'DESC')
                         ->join("{$this->facility_table} f", 'f.id = a.facility_id', 'left')
                         ->join('regions r', 'r.id = f.region_id', 'left');
 
@@ -156,6 +174,9 @@ class HealthController {
             if(!empty($primary_key)) {
                 $builder->where('a.id', $primary_key);
             }
+
+            // apply limit and offsets
+            $builder->limit($this->qr_limit, $this->qr_offset);
 
             // get the data
             $result = $builder->get();
@@ -174,7 +195,39 @@ class HealthController {
 
     public function diseases(array $params = [], $primary_key = null) {
 
-        try { 
+        try {
+
+            // apply the limit
+            $this->limit_offset($params);
+
+            // query builder
+            $builder = $this->db_model->db
+                        ->table("{$this->disease_table} a")
+                        ->select('a.*')
+                        ->orderBy('a.id', 'DESC');
+
+            // filter where in
+            $whereInArray = $this->db_filter->filterWhereIn($params, $this->route);
+
+            // loop through the filter in in array clause
+            foreach($whereInArray as $key => $whereIn) {
+                $builder->whereIn($key, $whereIn);
+            }
+
+            // if the primary key is set
+            if(!empty($primary_key)) {
+                $builder->where('a.id', $primary_key);
+            }
+
+            // apply limit and offsets
+            $builder->limit($this->qr_limit, $this->qr_offset);
+
+            // get the data
+            $result = $builder->get();
+
+            $data = !empty($result) ? $result->getResultArray() : [];
+
+            return $data;
 
         } catch(\Exception $e) {
             
